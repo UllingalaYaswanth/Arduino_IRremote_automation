@@ -1,0 +1,160 @@
+#include <IRremote.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+#define fan 3
+#define bulb 4
+#define ac 5
+#define tv 6
+#define motor 9
+
+LiquidCrystal_I2C lcd(32, 16, 2);  
+
+IRrecv IR(8);
+bool i = false;
+bool j = false;
+bool k = false;
+bool l = false;
+bool m = false;
+bool f = false;
+bool s = false;
+int count=0;
+
+void setup()
+{
+  Serial.begin(9600);
+  lcd.init();  
+  lcd.backlight();
+  lcd.setCursor(0,0);  
+  lcd.print("INSTALLING..");
+  delay(1000); 
+  lcd.clear();
+  lcd.setCursor(2,1);
+  lcd.print("REMOTE OFF");
+  
+  IR.enableIRIn();
+  pinMode(fan, OUTPUT);
+  pinMode(bulb, OUTPUT);
+  pinMode(ac, OUTPUT);
+  pinMode(tv, OUTPUT);
+  pinMode(motor,OUTPUT);
+}
+
+void loop()
+{
+  long signal = 0;
+  if (IR.decode())
+  {
+    signal = IR.decodedIRData.decodedRawData;
+    Serial.println(signal, HEX);
+ 
+    //-------------installing power button(remote ON)--------------------------------
+    if (signal==0xFF00BF00)
+      {
+    s=!s;
+      lcd.clear();
+      lcd.setCursor(2,1);
+      lcd.print("REMOTE ON");
+    }
+    //------------------FAN button--------------------------
+    if (signal == 0xEF10BF00 && s)
+    {
+      i = !i;
+      lcd.clear();
+      lcd.setCursor(0,1); 
+      lcd.print("FAN");
+      lcd.print(i ? " ON" : " OFF");
+      digitalWrite(fan, i);
+    }
+    //-------------------Bulb button-------------------------
+    
+    if (signal == 0xEE11BF00 && s)
+    {
+      j = !j;
+      lcd.clear();
+      lcd.setCursor(0,1);
+      lcd.print("BULB");
+      lcd.print(j ? " ON" : " OFF");
+      digitalWrite(bulb, j);
+    }
+    
+    //---------------------AC button------------------------
+    
+    if (signal == 0xED12BF00 && s)
+    {
+      k = !k;
+      lcd.clear();
+      lcd.setCursor(0,1);
+      lcd.print("AC");
+      lcd.print(k ? " ON" : " OFF");
+      digitalWrite(ac, k);
+    }
+    
+    //---------------------TV button----------------------------
+    
+    if (signal == 0xEB14BF00 && s)
+    {
+      l = !l;
+      lcd.clear();
+      lcd.setCursor(0,1);
+      lcd.print("TV");
+      lcd.print(l ? " ON" : " OFF");
+      digitalWrite(tv, l);
+    }
+    //------------------------remote off----------------------
+    
+    if (!s)
+    {
+      digitalWrite(fan, m);
+      digitalWrite(bulb, m);
+      digitalWrite(ac, m);
+      digitalWrite(tv, m);
+      digitalWrite(motor,m);
+      lcd.clear();
+      lcd.setCursor(2,1);
+      lcd.print("REMOTE OFF");
+    
+    }
+    //---------------------------installing motor button------------------------------
+    
+    if (signal==0xEA15BF00 && s)
+    {
+      lcd.clear();
+      lcd.setCursor(0,1);
+      lcd.print("MOTOR");
+      lcd.print(f ? " OFF" : " ON");
+      f=!f;
+      analogWrite(motor,60);
+    }
+    
+    if (f)                     //-------------increase speed-----------------------------------
+    {
+    if(signal==0xFE01BF00)//controlling fan
+    {
+      if (count<=200)
+      {
+      count=count+50;
+      Serial.print(count);
+      analogWrite(motor,count);
+      }
+    }                            
+    if(signal==0xF609BF00 && f)   //-----------decrease speed---------------
+    {
+      if (count>0)
+      {
+      count=count-50;
+      analogWrite(motor,count);
+      }
+    }
+    }
+    //--------------------motor off-----------------------------------
+    if(!f)
+    {
+    analogWrite(motor,0);
+    }
+ 
+    IR.resume();
+    delay(100);
+  }
+}
+
